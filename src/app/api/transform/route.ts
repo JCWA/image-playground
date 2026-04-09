@@ -1,7 +1,5 @@
 import { Client, handle_file } from "@gradio/client";
 
-const HF_TOKEN = process.env.HF_API_TOKEN!;
-
 export async function POST(request: Request) {
   try {
     const { prompt, imageUrl } = await request.json();
@@ -13,15 +11,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const app = await Client.connect("okaris/flux-img2img", {
-      token: HF_TOKEN as `hf_${string}`,
-    });
+    const app = await Client.connect("Manjushri/Instruct-Pix-2-Pix");
 
-    const result = await app.predict("/infer", {
-      source_image: handle_file(imageUrl),
-      prompt: prompt,
-      strength: 0.75,
+    const result = await app.predict("/predict", {
+      source_img: handle_file(imageUrl),
+      instructions: prompt,
+      guide: 7.5,
+      steps: 20,
       seed: -1,
+      Strength: 0.7,
     });
 
     const data = result.data as { url: string }[];

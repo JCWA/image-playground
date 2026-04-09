@@ -2,7 +2,8 @@ import { Client } from "@gradio/client";
 
 export async function POST(request: Request) {
   try {
-    const { prompt, imageUrl } = await request.json();
+    const { prompt, imageUrl, styleImageUrl, depthStrength, styleStrength } =
+      await request.json();
 
     if (!prompt || !imageUrl) {
       return Response.json(
@@ -12,9 +13,7 @@ export async function POST(request: Request) {
     }
 
     // Base64 Data URL → Blob 변환
-    const base64Match = imageUrl.match(
-      /^data:image\/(\w+);base64,(.+)$/
-    );
+    const base64Match = imageUrl.match(/^data:image\/(\w+);base64,(.+)$/);
     if (!base64Match) {
       return Response.json(
         { error: "이미지 형식이 올바르지 않습니다" },
@@ -23,17 +22,20 @@ export async function POST(request: Request) {
     }
     const mimeType = `image/${base64Match[1]}`;
     const buffer = Buffer.from(base64Match[2], "base64");
-    const blob = new Blob([buffer], { type: mimeType });
+    const structureBlob = new Blob([buffer], { type: mimeType });
 
-    const app = await Client.connect("Manjushri/Instruct-Pix-2-Pix");
+    // 스타일 이미지도 URL에서 Blob으로
+    const styleRes = await fetch(styleImageUrl);
+    const styleBlob = await styleRes.blob();
 
-    const result = await app.predict("/predict", {
-      source_img: blob,
-      instructions: prompt,
-      guide: 7.5,
-      steps: 20,
-      seed: -1,
-      Strength: 0.7,
+    const app = await Client.connect("multimodalart/flux-style-shaping");
+
+    const result = await app.predict("/generate_image", {
+      prompt,
+      structure_image: structureBlob,
+      style_image: styleBlob,
+      depth_strength: depthStrength ?? 15,
+      style_strength: styleStrength ?? 0.5,
     });
 
     const data = result.data as { url: string }[];

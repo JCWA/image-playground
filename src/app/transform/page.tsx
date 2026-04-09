@@ -6,34 +6,46 @@ import Spinner from "@/components/Spinner";
 
 const STYLE_PRESETS = [
   {
-    id: "wanghong",
-    label: "왕홍풍",
-    prompt: "Turn this into a Chinese influencer glamour photo with soft lighting and beauty filter",
-  },
-  {
-    id: "photobooth",
-    label: "인생네컷",
-    prompt: "Transform this into a Korean photo booth style with pastel background and bright lighting",
-  },
-  {
     id: "cyberpunk",
     label: "사이버펑크",
-    prompt: "Make this cyberpunk style with neon lights and futuristic dark atmosphere",
+    prompt: "cyberpunk style, neon lights, futuristic dark atmosphere",
+    styleImageUrl:
+      "https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=512&q=80",
   },
   {
     id: "watercolor",
     label: "수채화",
-    prompt: "Turn this into a watercolor painting with soft brush strokes and delicate colors",
+    prompt: "watercolor painting, soft brush strokes, artistic",
+    styleImageUrl:
+      "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=512&q=80",
   },
   {
     id: "anime",
     label: "애니메이션",
-    prompt: "Convert this into anime style illustration with vibrant colors and clean lines",
+    prompt: "anime style illustration, vibrant colors, clean lines",
+    styleImageUrl:
+      "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=512&q=80",
   },
   {
     id: "vintage",
     label: "빈티지 필름",
-    prompt: "Make this look like vintage 35mm film photography with grain and warm tones",
+    prompt: "vintage 35mm film photography, grain, warm tones",
+    styleImageUrl:
+      "https://images.unsplash.com/photo-1501639762078-4260e1b42028?w=512&q=80",
+  },
+  {
+    id: "oilpainting",
+    label: "유화",
+    prompt: "oil painting on canvas, rich texture, classical art style",
+    styleImageUrl:
+      "https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?w=512&q=80",
+  },
+  {
+    id: "neon",
+    label: "네온 팝아트",
+    prompt: "neon pop art style, bold colors, graphic design",
+    styleImageUrl:
+      "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?w=512&q=80",
   },
 ] as const;
 
@@ -44,6 +56,7 @@ export default function TransformPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
+  const [styleStrength, setStyleStrength] = useState(0.5);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -111,6 +124,8 @@ export default function TransformPage() {
         body: JSON.stringify({
           prompt: preset.prompt,
           imageUrl,
+          styleImageUrl: preset.styleImageUrl,
+          styleStrength,
         }),
       });
 
@@ -204,17 +219,47 @@ export default function TransformPage() {
               <button
                 key={style.id}
                 onClick={() => setSelectedStyle(style.id)}
-                className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
+                className={`rounded-xl border overflow-hidden text-left transition-all cursor-pointer ${
                   selectedStyle === style.id
-                    ? "border-purple-500 bg-purple-500/10"
-                    : "border-zinc-700 hover:border-zinc-500 bg-zinc-800/50"
+                    ? "border-purple-500 ring-2 ring-purple-500/50"
+                    : "border-zinc-700 hover:border-zinc-500"
                 }`}
               >
-                <p className="font-medium text-sm">{style.label}</p>
+                <img
+                  src={style.styleImageUrl}
+                  alt={style.label}
+                  className="w-full h-24 object-cover"
+                />
+                <p className="p-2 font-medium text-sm">{style.label}</p>
               </button>
             ))}
           </div>
         </div>
+
+        {/* 스타일 강도 슬라이더 */}
+        {selectedStyle && (
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm text-zinc-400">스타일 강도</label>
+              <span className="text-sm text-purple-400 font-mono">
+                {Math.round(styleStrength * 100)}%
+              </span>
+            </div>
+            <input
+              type="range"
+              min={0.1}
+              max={1.0}
+              step={0.05}
+              value={styleStrength}
+              onChange={(e) => setStyleStrength(Number(e.target.value))}
+              className="w-full accent-purple-500"
+            />
+            <div className="flex justify-between text-xs text-zinc-600 mt-1">
+              <span>원본 유지</span>
+              <span>강하게 변환</span>
+            </div>
+          </div>
+        )}
 
         {/* 변환 버튼 */}
         <Button

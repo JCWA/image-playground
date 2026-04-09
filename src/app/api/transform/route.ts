@@ -1,45 +1,54 @@
-import { fal } from "@fal-ai/client";
-
-fal.config({
-  credentials: process.env.FAL_KEY!,
-});
+const HF_API_TOKEN = process.env.HF_API_TOKEN!;
+const MODEL = "black-forest-labs/FLUX.1-schnell";
 
 export async function POST(request: Request) {
   try {
-    const { prompt, imageUrl, strength } = await request.json();
+    const { prompt } = await request.json();
 
-    if (!prompt || !imageUrl) {
+    if (!prompt) {
       return Response.json(
-        { error: "이미지와 스타일을 선택해주세요" },
+        { error: "스타일을 선택해주세요" },
         { status: 400 }
       );
     }
 
-    const result = await fal.subscribe("fal-ai/flux/dev/image-to-image", {
-      input: {
-        prompt,
-        image_url: imageUrl,
-        strength: strength ?? 0.75,
-        num_images: 1,
-      },
-    });
+    const res = await fetch(
+      `https://router.huggingface.co/hf-inference/models/${MODEL}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${HF_API_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ inputs: prompt }),
+      }
+    );
 
-    const images = (result.data as { images: { url: string }[] }).images;
-    if (!images?.[0]?.url) {
-      return Response.json({ error: "이미지 변환 결과가 없습니다" }, { status: 502 });
+    if (!res.ok) {
+      const errText = await res.text();
+      if (res.status === 503) {
+        return Response.json(
+          { error: "모델을 로딩 중입니다. 30초 후 다시 시도해주세요" },
+          { status: 503 }
+        );
+      }
+      if (errText.includes("rate limit")) {
+        return Response.json(
+          { error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요" },
+          { status: 429 }
+        );
+      }
+      return Response.json({ error: `변환 실패: ${errText}` }, { status: 500 });
     }
 
-    return Response.json({ imageUrl: images[0].url });
+    const blob = await res.blob();
+    const buffer = Buffer.from(await blob.arrayBuffer());
+    const base64 = buffer.toString("base64");
+    const dataUrl = `data:image/jpeg;base64,${base64}`;
+
+    return Response.json({ imageUrl: dataUrl });
   } catch (err) {
     const message = err instanceof Error ? err.message : "알 수 없는 오류";
-
-    if (message.includes("quota") || message.includes("credit")) {
-      return Response.json({ error: "API 크레딧이 소진되었습니다" }, { status: 429 });
-    }
-    if (message.includes("timeout") || message.includes("TIMEOUT")) {
-      return Response.json({ error: "변환 시간이 초과되었습니다. 다시 시도해주세요" }, { status: 504 });
-    }
-
     return Response.json({ error: `변환 실패: ${message}` }, { status: 500 });
   }
 }

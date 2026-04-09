@@ -10,9 +10,9 @@ const MODES = [
   },
   {
     href: "/transform",
-    title: "Image Transform",
-    description: "사진을 업로드하고 스타일을 선택하면 AI가 변환합니다",
-    icon: "I",
+    title: "Style Generator",
+    description: "스타일을 선택하고 주제를 입력하면 AI가 이미지를 생성합니다",
+    icon: "S",
     color: "pink",
   },
 ] as const;

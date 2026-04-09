@@ -1,54 +1,48 @@
-const HF_API_TOKEN = process.env.HF_API_TOKEN!;
-const MODEL = "black-forest-labs/FLUX.1-schnell";
+import { Client, handle_file } from "@gradio/client";
+
+const HF_TOKEN = process.env.HF_API_TOKEN!;
 
 export async function POST(request: Request) {
   try {
-    const { prompt } = await request.json();
+    const { prompt, imageUrl } = await request.json();
 
-    if (!prompt) {
+    if (!prompt || !imageUrl) {
       return Response.json(
-        { error: "스타일을 선택해주세요" },
+        { error: "이미지와 스타일을 선택해주세요" },
         { status: 400 }
       );
     }
 
-    const res = await fetch(
-      `https://router.huggingface.co/hf-inference/models/${MODEL}`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${HF_API_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ inputs: prompt }),
-      }
-    );
+    const app = await Client.connect("okaris/flux-img2img", {
+      token: HF_TOKEN as `hf_${string}`,
+    });
 
-    if (!res.ok) {
-      const errText = await res.text();
-      if (res.status === 503) {
-        return Response.json(
-          { error: "모델을 로딩 중입니다. 30초 후 다시 시도해주세요" },
-          { status: 503 }
-        );
-      }
-      if (errText.includes("rate limit")) {
-        return Response.json(
-          { error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요" },
-          { status: 429 }
-        );
-      }
-      return Response.json({ error: `변환 실패: ${errText}` }, { status: 500 });
+    const result = await app.predict("/infer", {
+      source_image: handle_file(imageUrl),
+      prompt: prompt,
+      strength: 0.75,
+      seed: -1,
+    });
+
+    const data = result.data as { url: string }[];
+    if (!data?.[0]?.url) {
+      return Response.json(
+        { error: "변환 결과가 없습니다" },
+        { status: 502 }
+      );
     }
 
-    const blob = await res.blob();
-    const buffer = Buffer.from(await blob.arrayBuffer());
-    const base64 = buffer.toString("base64");
-    const dataUrl = `data:image/jpeg;base64,${base64}`;
-
-    return Response.json({ imageUrl: dataUrl });
+    return Response.json({ imageUrl: data[0].url });
   } catch (err) {
     const message = err instanceof Error ? err.message : "알 수 없는 오류";
+
+    if (message.includes("queue") || message.includes("Queue")) {
+      return Response.json(
+        { error: "대기열이 가득 찼습니다. 잠시 후 다시 시도해주세요" },
+        { status: 503 }
+      );
+    }
+
     return Response.json({ error: `변환 실패: ${message}` }, { status: 500 });
   }
 }

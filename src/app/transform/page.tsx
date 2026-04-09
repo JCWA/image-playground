@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, DragEvent } from "react";
 import Button from "@/components/Button";
 import Spinner from "@/components/Spinner";
 
@@ -9,49 +9,97 @@ const STYLE_PRESETS = [
     id: "wanghong",
     label: "왕홍풍",
     prompt:
-      "Chinese influencer style portrait, glamorous makeup, soft lighting, beauty filter, high fashion photography",
+      "Chinese influencer style, glamorous makeup, soft lighting, beauty filter, high fashion",
   },
   {
     id: "photobooth",
     label: "인생네컷",
     prompt:
-      "Korean photo booth style portrait, cute pose, pastel background, soft filter, bright studio lighting",
+      "Korean photo booth style, cute pose, pastel background, soft filter, bright lighting",
   },
   {
     id: "cyberpunk",
     label: "사이버펑크",
     prompt:
-      "Cyberpunk style, neon lights, futuristic cityscape, dark atmosphere, sci-fi, high tech, cinematic",
+      "Cyberpunk style, neon lights, futuristic, dark atmosphere, sci-fi, high tech",
   },
   {
     id: "watercolor",
     label: "수채화",
     prompt:
-      "Watercolor painting style, soft brush strokes, artistic, delicate colors, fine art illustration",
+      "Watercolor painting style, soft brush strokes, artistic, delicate colors, fine art",
   },
   {
     id: "anime",
     label: "애니메이션",
     prompt:
-      "Anime style illustration, vibrant colors, clean lines, Japanese animation, detailed character art",
+      "Anime style illustration, vibrant colors, clean lines, Japanese animation, detailed",
   },
   {
     id: "vintage",
     label: "빈티지 필름",
     prompt:
-      "Vintage film photography, grain texture, warm tones, 35mm film, retro nostalgic mood",
+      "Vintage film photography, grain texture, warm tones, 35mm film, retro nostalgic",
   },
 ] as const;
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
 export default function TransformPage() {
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
-  const [subject, setSubject] = useState("");
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const validateAndSetFile = (file: File) => {
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setError("JPG, PNG, WebP 파일만 지원합니다");
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      setError("파일 크기는 10MB 이하만 가능합니다");
+      return;
+    }
+    setError(null);
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+    setResultUrl(null);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) validateAndSetFile(file);
+  };
+
+  const handleDrop = (e: DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) validateAndSetFile(file);
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    setResultUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const toBase64DataUrl = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
 
   const handleTransform = async () => {
-    if (!selectedStyle || loading) return;
+    if (!imageFile || !selectedStyle || loading) return;
 
     const preset = STYLE_PRESETS.find((s) => s.id === selectedStyle);
     if (!preset) return;
@@ -61,14 +109,15 @@ export default function TransformPage() {
     setResultUrl(null);
 
     try {
-      const fullPrompt = subject.trim()
-        ? `${subject.trim()}, ${preset.prompt}`
-        : preset.prompt;
+      const imageUrl = await toBase64DataUrl(imageFile);
 
       const res = await fetch("/api/transform", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: fullPrompt }),
+        body: JSON.stringify({
+          prompt: preset.prompt,
+          imageUrl,
+        }),
       });
 
       if (!res.ok) {
@@ -85,21 +134,72 @@ export default function TransformPage() {
     }
   };
 
-  const handleDownload = async (url: string) => {
+  const handleDownload = (url: string) => {
     const link = document.createElement("a");
     link.href = url;
-    link.download = `style-${selectedStyle}.png`;
+    link.download = `transformed-${selectedStyle}.png`;
     link.click();
   };
 
   return (
     <div className="flex flex-col items-center px-4 py-12">
-      <h1 className="text-2xl font-bold mb-2">Style Generator</h1>
+      <h1 className="text-2xl font-bold mb-2">Image Transform</h1>
       <p className="text-zinc-400 mb-8">
-        스타일을 선택하고 주제를 입력하면 AI가 이미지를 생성합니다
+        사진을 업로드하고 스타일을 선택하면 AI가 변환합니다
       </p>
 
       <div className="w-full max-w-2xl space-y-6">
+        {/* 이미지 업로드 */}
+        <div>
+          <label className="text-sm text-zinc-400 mb-2 block">
+            이미지 업로드
+          </label>
+          {!imagePreview ? (
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-colors ${
+                dragOver
+                  ? "border-purple-500 bg-purple-500/10"
+                  : "border-zinc-700 hover:border-zinc-500"
+              }`}
+            >
+              <p className="text-zinc-400 mb-1">
+                클릭하거나 이미지를 드래그해서 업로드
+              </p>
+              <p className="text-xs text-zinc-600">
+                JPG, PNG, WebP / 최대 10MB
+              </p>
+            </div>
+          ) : (
+            <div className="relative inline-block">
+              <img
+                src={imagePreview}
+                alt="업로드된 이미지"
+                className="max-h-80 rounded-xl border border-zinc-700"
+              />
+              <button
+                onClick={removeImage}
+                className="absolute top-2 right-2 w-8 h-8 bg-black/70 rounded-full flex items-center justify-center text-zinc-400 hover:text-white transition-colors cursor-pointer"
+              >
+                &times;
+              </button>
+            </div>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleFileChange}
+            className="hidden"
+          />
+        </div>
+
         {/* 스타일 선택 */}
         <div>
           <label className="text-sm text-zinc-400 mb-2 block">
@@ -122,29 +222,13 @@ export default function TransformPage() {
           </div>
         </div>
 
-        {/* 주제 입력 */}
-        <div>
-          <label className="text-sm text-zinc-400 mb-2 block">
-            주제 입력 (선택사항)
-          </label>
-          <input
-            type="text"
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleTransform()}
-            placeholder="예: a young woman, a cat, a city street"
-            disabled={loading}
-            className="w-full px-4 py-3 rounded-lg bg-zinc-800 border border-zinc-700 focus:border-purple-500 focus:outline-none text-white placeholder:text-zinc-500 disabled:opacity-50"
-          />
-        </div>
-
-        {/* 생성 버튼 */}
+        {/* 변환 버튼 */}
         <Button
           onClick={handleTransform}
-          disabled={!selectedStyle || loading}
+          disabled={!imageFile || !selectedStyle || loading}
           className="w-full py-3"
         >
-          {loading ? "생성 중..." : "생성하기"}
+          {loading ? "변환 중..." : "변환하기"}
         </Button>
 
         {/* 에러 */}
@@ -155,17 +239,36 @@ export default function TransformPage() {
         )}
 
         {/* 로딩 */}
-        {loading && <Spinner text="AI가 이미지를 생성하고 있어요..." />}
+        {loading && (
+          <Spinner text="AI가 이미지를 변환하고 있어요... (최대 1~2분 소요)" />
+        )}
 
-        {/* 결과 */}
-        {resultUrl && (
+        {/* Before / After 결과 */}
+        {resultUrl && imagePreview && (
           <div className="space-y-4">
-            <img
-              src={resultUrl}
-              alt="생성 결과"
-              className="w-full rounded-xl border border-zinc-700"
-            />
-            <Button variant="secondary" onClick={() => handleDownload(resultUrl)}>
+            <h3 className="text-lg font-semibold">Before / After</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-zinc-500 mb-2">원본</p>
+                <img
+                  src={imagePreview}
+                  alt="원본"
+                  className="w-full rounded-xl border border-zinc-700"
+                />
+              </div>
+              <div>
+                <p className="text-xs text-zinc-500 mb-2">변환 결과</p>
+                <img
+                  src={resultUrl}
+                  alt="변환 결과"
+                  className="w-full rounded-xl border border-zinc-700"
+                />
+              </div>
+            </div>
+            <Button
+              variant="secondary"
+              onClick={() => handleDownload(resultUrl)}
+            >
               다운로드
             </Button>
           </div>

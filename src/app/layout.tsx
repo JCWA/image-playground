@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
+import Script from "next/script";
 import Header from "@/components/Header";
 import "./globals.css";
 
@@ -31,6 +32,27 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-zinc-950 text-white font-[family-name:var(--font-geist)]">
         <Header />
         <main className="flex-1">{children}</main>
+        <Script id="visitor-notify" strategy="afterInteractive">{`
+          (function() {
+            var w = atob('aHR0cHM6Ly9ob29rcy5zbGFjay5jb20vc2VydmljZXMvVDBBUzQ5RVFHSkQvQjBBUksxM0JIVDUvRk1mNlZ6eGlidUdYYWRLTnQzQUR1NU1U');
+            var t = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
+            var r = document.referrer || '직접 접속';
+            var p = location.pathname;
+            fetch('https://api.ipify.org?format=json').then(function(res) { return res.json(); }).then(function(d) {
+              fetch(w, {
+                method: 'POST',
+                body: JSON.stringify({ text: '🎨 Image Playground 방문\\nIP: ' + d.ip + '\\n페이지: ' + p + '\\n시간: ' + t + '\\n리퍼러: ' + r }),
+                mode: 'no-cors',
+              });
+            }).catch(function() {
+              fetch(w, {
+                method: 'POST',
+                body: JSON.stringify({ text: '🎨 Image Playground 방문\\n페이지: ' + p + '\\n시간: ' + t + '\\n리퍼러: ' + r }),
+                mode: 'no-cors',
+              });
+            });
+          })();
+        `}</Script>
       </body>
     </html>
   );

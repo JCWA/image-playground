@@ -49,7 +49,20 @@ export async function POST(request: Request) {
       );
     }
 
-    return Response.json({ imageUrl: data[0].url });
+    // Gradio 임시 URL → Base64 Data URL로 변환
+    const imgRes = await fetch(data[0].url);
+    if (!imgRes.ok) {
+      return Response.json(
+        { error: "결과 이미지를 가져올 수 없습니다" },
+        { status: 502 }
+      );
+    }
+    const imgBuffer = Buffer.from(await imgRes.arrayBuffer());
+    const contentType = imgRes.headers.get("content-type") || "image/png";
+    const base64 = imgBuffer.toString("base64");
+    const dataUrl = `data:${contentType};base64,${base64}`;
+
+    return Response.json({ imageUrl: dataUrl });
   } catch (err) {
     const message = err instanceof Error ? err.message : "알 수 없는 오류";
 

@@ -9,43 +9,37 @@ const STYLE_PRESETS = [
     id: "cyberpunk",
     label: "사이버펑크",
     prompt: "cyberpunk style, neon lights, futuristic dark atmosphere",
-    styleImageUrl:
-      "https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=512&q=80",
+    styleImage: "/styles/cyberpunk.jpg",
   },
   {
     id: "watercolor",
     label: "수채화",
     prompt: "watercolor painting, soft brush strokes, artistic",
-    styleImageUrl:
-      "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=512&q=80",
+    styleImage: "/styles/watercolor.jpg",
   },
   {
     id: "anime",
     label: "애니메이션",
     prompt: "anime style illustration, vibrant colors, clean lines",
-    styleImageUrl:
-      "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=512&q=80",
+    styleImage: "/styles/anime.jpg",
   },
   {
     id: "vintage",
     label: "빈티지 필름",
     prompt: "vintage 35mm film photography, grain, warm tones",
-    styleImageUrl:
-      "https://images.unsplash.com/photo-1501639762078-4260e1b42028?w=512&q=80",
+    styleImage: "/styles/vintage.jpg",
   },
   {
     id: "oilpainting",
     label: "유화",
     prompt: "oil painting on canvas, rich texture, classical art style",
-    styleImageUrl:
-      "https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?w=512&q=80",
+    styleImage: "/styles/oilpainting.jpg",
   },
   {
     id: "neon",
     label: "네온 팝아트",
     prompt: "neon pop art style, bold colors, graphic design",
-    styleImageUrl:
-      "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?w=512&q=80",
+    styleImage: "/styles/neon.jpg",
   },
 ] as const;
 
@@ -124,7 +118,7 @@ export default function TransformPage() {
         body: JSON.stringify({
           prompt: preset.prompt,
           imageUrl,
-          styleImageUrl: preset.styleImageUrl,
+          styleImage: preset.styleImage,
           styleStrength,
         }),
       });
@@ -226,7 +220,7 @@ export default function TransformPage() {
                 }`}
               >
                 <img
-                  src={style.styleImageUrl}
+                  src={style.styleImage}
                   alt={style.label}
                   className="w-full h-24 object-cover"
                 />

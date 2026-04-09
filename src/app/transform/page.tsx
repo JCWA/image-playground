@@ -8,38 +8,32 @@ const STYLE_PRESETS = [
   {
     id: "wanghong",
     label: "왕홍풍",
-    prompt:
-      "Chinese influencer style, glamorous makeup, soft lighting, beauty filter, high fashion",
+    prompt: "Turn this into a Chinese influencer glamour photo with soft lighting and beauty filter",
   },
   {
     id: "photobooth",
     label: "인생네컷",
-    prompt:
-      "Korean photo booth style, cute pose, pastel background, soft filter, bright lighting",
+    prompt: "Transform this into a Korean photo booth style with pastel background and bright lighting",
   },
   {
     id: "cyberpunk",
     label: "사이버펑크",
-    prompt:
-      "Cyberpunk style, neon lights, futuristic, dark atmosphere, sci-fi, high tech",
+    prompt: "Make this cyberpunk style with neon lights and futuristic dark atmosphere",
   },
   {
     id: "watercolor",
     label: "수채화",
-    prompt:
-      "Watercolor painting style, soft brush strokes, artistic, delicate colors, fine art",
+    prompt: "Turn this into a watercolor painting with soft brush strokes and delicate colors",
   },
   {
     id: "anime",
     label: "애니메이션",
-    prompt:
-      "Anime style illustration, vibrant colors, clean lines, Japanese animation, detailed",
+    prompt: "Convert this into anime style illustration with vibrant colors and clean lines",
   },
   {
     id: "vintage",
     label: "빈티지 필름",
-    prompt:
-      "Vintage film photography, grain texture, warm tones, 35mm film, retro nostalgic",
+    prompt: "Make this look like vintage 35mm film photography with grain and warm tones",
   },
 ] as const;
 

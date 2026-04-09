@@ -1,4 +1,4 @@
-import { Client, handle_file } from "@gradio/client";
+import { Client } from "@gradio/client";
 
 export async function POST(request: Request) {
   try {
@@ -11,10 +11,24 @@ export async function POST(request: Request) {
       );
     }
 
+    // Base64 Data URL → Blob 변환
+    const base64Match = imageUrl.match(
+      /^data:image\/(\w+);base64,(.+)$/
+    );
+    if (!base64Match) {
+      return Response.json(
+        { error: "이미지 형식이 올바르지 않습니다" },
+        { status: 400 }
+      );
+    }
+    const mimeType = `image/${base64Match[1]}`;
+    const buffer = Buffer.from(base64Match[2], "base64");
+    const blob = new Blob([buffer], { type: mimeType });
+
     const app = await Client.connect("Manjushri/Instruct-Pix-2-Pix");
 
     const result = await app.predict("/predict", {
-      source_img: handle_file(imageUrl),
+      source_img: blob,
       instructions: prompt,
       guide: 7.5,
       steps: 20,

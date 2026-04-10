@@ -5,22 +5,48 @@ import Button from "@/components/Button";
 import Spinner from "@/components/Spinner";
 
 const MODELS = [
+  // HuggingFace Inference API (빠름)
   {
-    id: "black-forest-labs/FLUX.1-schnell",
+    id: "flux-schnell-hf",
     label: "FLUX.1 Schnell",
     description: "빠른 생성, 고품질",
     provider: "HuggingFace",
   },
   {
-    id: "stabilityai/stable-diffusion-3-medium-diffusers",
+    id: "sd3-medium",
     label: "Stable Diffusion 3",
     description: "안정적, 다양한 스타일",
     provider: "HuggingFace",
   },
+  // Gradio Spaces (느리지만 고품질)
   {
-    id: "multimodalart/FLUX.1-merged",
+    id: "flux-schnell-gradio",
+    label: "FLUX.1 Schnell (Gradio)",
+    description: "고해상도 1024px",
+    provider: "Gradio",
+  },
+  {
+    id: "flux-merged",
     label: "FLUX.1 Merged",
-    description: "고품질, 느림 (Gradio)",
+    description: "고품질 통합 모델",
+    provider: "Gradio",
+  },
+  {
+    id: "flux-krea-dev",
+    label: "FLUX Krea Dev",
+    description: "크리에이티브 아트",
+    provider: "Gradio",
+  },
+  {
+    id: "flux-realism",
+    label: "FLUX Realism",
+    description: "사실적인 사진 스타일",
+    provider: "Gradio",
+  },
+  {
+    id: "hyper-flux",
+    label: "Hyper-FLUX (ByteDance)",
+    description: "8스텝 고속 생성",
     provider: "Gradio",
   },
 ];

@@ -4,6 +4,27 @@ import { useState, useRef, DragEvent } from "react";
 import Button from "@/components/Button";
 import Spinner from "@/components/Spinner";
 
+const TRANSFORM_MODELS = [
+  {
+    id: "flux-style-shaping",
+    label: "FLUX Style Shaping",
+    description: "스타일 참고 이미지 기반, 고품질",
+    needsStyleImage: true,
+  },
+  {
+    id: "cosxl-edit",
+    label: "CosXL Edit (SDXL)",
+    description: "프롬프트 기반 이미지 편집",
+    needsStyleImage: false,
+  },
+  {
+    id: "instruct-pix2pix",
+    label: "Instruct Pix2Pix",
+    description: "지시형 프롬프트 변환",
+    needsStyleImage: false,
+  },
+];
+
 const STYLE_PRESETS = [
   {
     id: "cyberpunk",
@@ -47,6 +68,8 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 export default function TransformPage() {
+  const [selectedModel, setSelectedModel] = useState(TRANSFORM_MODELS[0].id);
+  const [customPrompt, setCustomPrompt] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
@@ -100,10 +123,12 @@ export default function TransformPage() {
     });
 
   const handleTransform = async () => {
-    if (!imageFile || !selectedStyle || loading) return;
+    const currentModel = TRANSFORM_MODELS.find((m) => m.id === selectedModel);
+    if (!imageFile || loading) return;
+    if (currentModel?.needsStyleImage && !selectedStyle) return;
 
     const preset = STYLE_PRESETS.find((s) => s.id === selectedStyle);
-    if (!preset) return;
+    if (currentModel?.needsStyleImage && !preset) return;
 
     setLoading(true);
     setError(null);
@@ -116,10 +141,11 @@ export default function TransformPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt: preset.prompt,
+          prompt: preset?.prompt ?? customPrompt,
           imageUrl,
-          styleImage: preset.styleImage,
+          styleImage: preset?.styleImage,
           styleStrength,
+          model: selectedModel,
         }),
       });
 
@@ -152,6 +178,26 @@ export default function TransformPage() {
       </p>
 
       <div className="w-full max-w-2xl space-y-6">
+        {/* 모델 선택 */}
+        <div>
+          <label className="text-sm text-zinc-400 mb-2 block">모델 선택</label>
+          <select
+            value={selectedModel}
+            onChange={(e) => {
+              setSelectedModel(e.target.value);
+              setResultUrl(null);
+            }}
+            disabled={loading}
+            className="w-full px-4 py-3 rounded-lg bg-zinc-800 border border-zinc-700 focus:border-purple-500 focus:outline-none text-white disabled:opacity-50 cursor-pointer"
+          >
+            {TRANSFORM_MODELS.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.label} — {m.description}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {/* 이미지 업로드 */}
         <div>
           <label className="text-sm text-zinc-400 mb-2 block">
@@ -203,7 +249,9 @@ export default function TransformPage() {
           />
         </div>
 
-        {/* 스타일 선택 */}
+        {/* 스타일 선택 (스타일 이미지가 필요한 모델만) */}
+        {TRANSFORM_MODELS.find((m) => m.id === selectedModel)
+          ?.needsStyleImage && (
         <div>
           <label className="text-sm text-zinc-400 mb-2 block">
             스타일 선택
@@ -229,6 +277,25 @@ export default function TransformPage() {
             ))}
           </div>
         </div>
+        )}
+
+        {/* 프롬프트 입력 (스타일 이미지가 필요 없는 모델) */}
+        {!TRANSFORM_MODELS.find((m) => m.id === selectedModel)
+          ?.needsStyleImage && (
+          <div>
+            <label className="text-sm text-zinc-400 mb-2 block">
+              변환 프롬프트
+            </label>
+            <input
+              type="text"
+              value={customPrompt}
+              onChange={(e) => setCustomPrompt(e.target.value)}
+              placeholder="예: make it cyberpunk style, turn into watercolor painting"
+              disabled={loading}
+              className="w-full px-4 py-3 rounded-lg bg-zinc-800 border border-zinc-700 focus:border-purple-500 focus:outline-none text-white placeholder:text-zinc-500 disabled:opacity-50"
+            />
+          </div>
+        )}
 
         {/* 스타일 강도 슬라이더 */}
         {selectedStyle && (
@@ -258,7 +325,14 @@ export default function TransformPage() {
         {/* 변환 버튼 */}
         <Button
           onClick={handleTransform}
-          disabled={!imageFile || !selectedStyle || loading}
+          disabled={
+            !imageFile ||
+            loading ||
+            (TRANSFORM_MODELS.find((m) => m.id === selectedModel)
+              ?.needsStyleImage
+              ? !selectedStyle
+              : !customPrompt.trim())
+          }
           className="w-full py-3"
         >
           {loading ? "변환 중..." : "변환하기"}

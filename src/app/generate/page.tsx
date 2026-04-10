@@ -4,6 +4,27 @@ import { useState } from "react";
 import Button from "@/components/Button";
 import Spinner from "@/components/Spinner";
 
+const MODELS = [
+  {
+    id: "black-forest-labs/FLUX.1-schnell",
+    label: "FLUX.1 Schnell",
+    description: "빠른 생성, 고품질",
+    provider: "HuggingFace",
+  },
+  {
+    id: "stabilityai/stable-diffusion-3-medium-diffusers",
+    label: "Stable Diffusion 3",
+    description: "안정적, 다양한 스타일",
+    provider: "HuggingFace",
+  },
+  {
+    id: "multimodalart/FLUX.1-merged",
+    label: "FLUX.1 Merged",
+    description: "고품질, 느림 (Gradio)",
+    provider: "Gradio",
+  },
+];
+
 const EXAMPLES = [
   "A cat wearing sunglasses on a beach, digital art",
   "Cyberpunk city at night with neon lights, cinematic",
@@ -16,10 +37,12 @@ const EXAMPLES = [
 interface HistoryItem {
   prompt: string;
   imageUrl: string;
+  model: string;
 }
 
 export default function GeneratePage() {
   const [prompt, setPrompt] = useState("");
+  const [selectedModel, setSelectedModel] = useState(MODELS[0].id);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -35,7 +58,7 @@ export default function GeneratePage() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: trimmed }),
+        body: JSON.stringify({ prompt: trimmed, model: selectedModel }),
       });
 
       if (!res.ok) {
@@ -44,7 +67,12 @@ export default function GeneratePage() {
       }
 
       const data = await res.json();
-      setHistory((prev) => [{ prompt: trimmed, imageUrl: data.imageUrl }, ...prev]);
+      const modelLabel =
+        MODELS.find((m) => m.id === selectedModel)?.label ?? selectedModel;
+      setHistory((prev) => [
+        { prompt: trimmed, imageUrl: data.imageUrl, model: modelLabel },
+        ...prev,
+      ]);
       setPrompt("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "알 수 없는 오류");
@@ -63,6 +91,8 @@ export default function GeneratePage() {
     URL.revokeObjectURL(a.href);
   };
 
+  const currentModel = MODELS.find((m) => m.id === selectedModel);
+
   return (
     <div className="flex flex-col items-center px-4 py-12">
       <h1 className="text-2xl font-bold mb-2">Text to Image</h1>
@@ -71,6 +101,28 @@ export default function GeneratePage() {
       </p>
 
       <div className="w-full max-w-2xl space-y-4">
+        {/* 모델 선택 */}
+        <div>
+          <label className="text-sm text-zinc-400 mb-2 block">모델 선택</label>
+          <select
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            disabled={loading}
+            className="w-full px-4 py-3 rounded-lg bg-zinc-800 border border-zinc-700 focus:border-purple-500 focus:outline-none text-white disabled:opacity-50 cursor-pointer"
+          >
+            {MODELS.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.label} — {m.description}
+              </option>
+            ))}
+          </select>
+          {currentModel?.provider === "Gradio" && (
+            <p className="text-xs text-yellow-500 mt-1">
+              Gradio 모델은 GPU 웨이크업으로 1~2분 걸릴 수 있어요
+            </p>
+          )}
+        </div>
+
         {/* 프롬프트 입력 */}
         <div className="flex flex-col sm:flex-row gap-2">
           <input
@@ -113,7 +165,15 @@ export default function GeneratePage() {
         )}
 
         {/* 로딩 */}
-        {loading && <Spinner text="AI가 이미지를 생성하고 있어요..." />}
+        {loading && (
+          <Spinner
+            text={
+              currentModel?.provider === "Gradio"
+                ? "AI가 이미지를 생성하고 있어요... (최대 1~2분 소요)"
+                : "AI가 이미지를 생성하고 있어요..."
+            }
+          />
+        )}
 
         {/* 히스토리 */}
         {history.length > 0 && (
@@ -128,19 +188,22 @@ export default function GeneratePage() {
                   alt={item.prompt}
                   className="w-full"
                 />
-                <div className="p-4 flex items-center justify-between gap-4">
-                  <p className="text-sm text-zinc-400 truncate flex-1">
-                    {item.prompt}
-                  </p>
-                  <Button
-                    variant="secondary"
-                    className="text-sm shrink-0"
-                    onClick={() =>
-                      handleDownload(item.imageUrl, `generated-${i}.png`)
-                    }
-                  >
-                    다운로드
-                  </Button>
+                <div className="p-4 space-y-2">
+                  <div className="flex items-center justify-between gap-4">
+                    <p className="text-sm text-zinc-400 truncate flex-1">
+                      {item.prompt}
+                    </p>
+                    <Button
+                      variant="secondary"
+                      className="text-sm shrink-0"
+                      onClick={() =>
+                        handleDownload(item.imageUrl, `generated-${i}.png`)
+                      }
+                    >
+                      다운로드
+                    </Button>
+                  </div>
+                  <p className="text-xs text-zinc-600">{item.model}</p>
                 </div>
               </div>
             ))}

@@ -20,6 +20,10 @@ export const metadata: Metadata = {
     description: "AI 이미지 생성 & 스타일 변환 플레이그라운드",
     type: "website",
   },
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default function RootLayout({
@@ -34,6 +38,8 @@ export default function RootLayout({
         <main className="flex-1">{children}</main>
         <Script id="visitor-notify" strategy="afterInteractive">{`
           (function() {
+            var ua = navigator.userAgent || '';
+            if (/bot|crawl|spider|slurp|googlebot|bingbot|yandex|baidu|duckduck|facebookexternalhit|twitterbot|linkedinbot|semrush|ahref|mj12bot|dotbot|petalbot|bytespider|gptbot|chatgpt/i.test(ua)) return;
             var w = atob('aHR0cHM6Ly9ob29rcy5zbGFjay5jb20vc2VydmljZXMvVDBBUzQ5RVFHSkQvQjBBUksxM0JIVDUvRk1mNlZ6eGlidUdYYWRLTnQzQUR1NU1U');
             var t = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
             var r = document.referrer || '직접 접속';

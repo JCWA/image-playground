@@ -1,45 +1,82 @@
+import { Client } from "@gradio/client";
+
 const HF_API_TOKEN = process.env.HF_API_TOKEN!;
-const MODEL = "black-forest-labs/FLUX.1-schnell";
+
+const HF_MODELS = [
+  "black-forest-labs/FLUX.1-schnell",
+  "stabilityai/stable-diffusion-3-medium-diffusers",
+];
+
+const GRADIO_MODELS = [
+  "black-forest-labs/FLUX.1-schnell",
+  "multimodalart/FLUX.1-merged",
+];
+
+async function generateViaHF(model: string, prompt: string): Promise<Buffer> {
+  const res = await fetch(
+    `https://router.huggingface.co/hf-inference/models/${model}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${HF_API_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ inputs: prompt }),
+    }
+  );
+
+  if (!res.ok) {
+    const errText = await res.text();
+    if (res.status === 503) throw new Error("모델을 로딩 중입니다. 30초 후 다시 시도해주세요");
+    if (errText.includes("rate limit")) throw new Error("요청이 너무 많습니다. 잠시 후 다시 시도해주세요");
+    throw new Error(errText);
+  }
+
+  return Buffer.from(await res.arrayBuffer());
+}
+
+async function generateViaGradio(space: string, prompt: string): Promise<Buffer> {
+  const app = await Client.connect(space, {
+    token: HF_API_TOKEN as `hf_${string}`,
+  });
+
+  const result = await app.predict("/infer", {
+    prompt,
+    seed: 0,
+    randomize_seed: true,
+    width: 1024,
+    height: 1024,
+    num_inference_steps: space.includes("merged") ? 8 : 4,
+    ...(space.includes("merged") ? { guidance_scale: 3.5 } : {}),
+  });
+
+  const data = result.data as [{ url: string }, number];
+  if (!data?.[0]?.url) throw new Error("생성 결과가 없습니다");
+
+  const imgRes = await fetch(data[0].url);
+  if (!imgRes.ok) throw new Error("결과 이미지를 가져올 수 없습니다");
+  return Buffer.from(await imgRes.arrayBuffer());
+}
 
 export async function POST(request: Request) {
   try {
-    const { prompt } = await request.json();
+    const { prompt, model } = await request.json();
 
     if (!prompt) {
       return Response.json({ error: "프롬프트를 입력해주세요" }, { status: 400 });
     }
 
-    const res = await fetch(
-      `https://router.huggingface.co/hf-inference/models/${MODEL}`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${HF_API_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ inputs: prompt }),
-      }
-    );
+    let buffer: Buffer;
 
-    if (!res.ok) {
-      const errText = await res.text();
-      if (res.status === 503) {
-        return Response.json(
-          { error: "모델을 로딩 중입니다. 30초 후 다시 시도해주세요" },
-          { status: 503 }
-        );
-      }
-      if (errText.includes("rate limit")) {
-        return Response.json(
-          { error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요" },
-          { status: 429 }
-        );
-      }
-      return Response.json({ error: `생성 실패: ${errText}` }, { status: 500 });
+    if (HF_MODELS.includes(model)) {
+      buffer = await generateViaHF(model, prompt);
+    } else if (GRADIO_MODELS.includes(model)) {
+      buffer = await generateViaGradio(model, prompt);
+    } else {
+      // 기본값: HF FLUX.1-schnell
+      buffer = await generateViaHF(HF_MODELS[0], prompt);
     }
 
-    const blob = await res.blob();
-    const buffer = Buffer.from(await blob.arrayBuffer());
     const base64 = buffer.toString("base64");
     const dataUrl = `data:image/jpeg;base64,${base64}`;
 

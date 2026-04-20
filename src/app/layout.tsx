@@ -40,23 +40,16 @@ export default function RootLayout({
           (function() {
             var ua = navigator.userAgent || '';
             if (/bot|crawl|spider|slurp|googlebot|bingbot|yandex|baidu|duckduck|facebookexternalhit|twitterbot|linkedinbot|semrush|ahref|mj12bot|dotbot|petalbot|bytespider|gptbot|chatgpt/i.test(ua)) return;
-            var w = atob('aHR0cHM6Ly9ob29rcy5zbGFjay5jb20vc2VydmljZXMvVDBBUzQ5RVFHSkQvQjBBUksxM0JIVDUvRk1mNlZ6eGlidUdYYWRLTnQzQUR1NU1U');
             var t = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
-            var r = document.referrer || '직접 접속';
-            var p = location.pathname;
-            fetch('https://api.ipify.org?format=json').then(function(res) { return res.json(); }).then(function(d) {
-              fetch(w, {
-                method: 'POST',
-                body: JSON.stringify({ text: '🎨 Image Playground 방문\\nIP: ' + d.ip + '\\n페이지: ' + p + '\\n시간: ' + t + '\\n리퍼러: ' + r }),
-                mode: 'no-cors',
-              });
-            }).catch(function() {
-              fetch(w, {
-                method: 'POST',
-                body: JSON.stringify({ text: '🎨 Image Playground 방문\\n페이지: ' + p + '\\n시간: ' + t + '\\n리퍼러: ' + r }),
-                mode: 'no-cors',
-              });
-            });
+            fetch('https://notify.channy.dev/pulse', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                title: '🎨 Image Playground 방문',
+                text: '페이지: ' + location.pathname + ' · 시간: ' + t,
+                level: 'info',
+              }),
+            }).catch(function() {});
           })();
         `}</Script>
       </body>
